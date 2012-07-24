@@ -101,46 +101,15 @@ module Resque
       end
     end
 
-    # Create a new DeferredJob
-    # @param [String] id - the id of the job
-    # @param [Class, String] klass - The class of the job to run
-    # @param [Array] args - The args to send to the job
-    # @return [Resque::DeferredJob] - the job, cleared
-    def self.create(id, klass, *args)
-      plan = [klass.to_s, args]
-      Resque.redis.set(id, MultiJson.encode(plan))
-      # Return the job
-      job = new id, klass, *args
-      job.clear
-      job
-    end
-
-    # Find an existing DeferredJob
-    # @param [String] id - the id of the job
-    # @return [Resque::DeferredJob] - the job
-    def self.find(id)
-      plan_data = Resque.redis.get(id)
-      # If found, return the job, otherwise raise NoSuchKey
-      if plan_data.nil?
-        raise ::Resque::NoSuchKey.new "No Such DeferredJob: #{id}"
-      else
-        plan = MultiJson.decode(plan_data)
-        new id, plan.first, *plan.last
-      end
-    end
-
-    def self.exists?(id)
-      !Resque.redis.get(id).nil?
-    end
-
-    def self.version
-      VERSION.join '.'
-    end
-
-    # Don't allow new instances
+   # Don't allow new instances
     private_class_method :new
 
     private
+
+    # A helper (similar to Resque::Helpers)
+    def redis
+      self.class.redis
+    end
 
     # How to log - mirrors a pattern in resque
     def log(msg)
@@ -156,6 +125,53 @@ module Resque
     # Execute the job with resque
     def execute
       Resque.enqueue klass, *args
+    end
+
+    class << self
+
+      attr_writer :redis
+
+      # Create a new DeferredJob
+      # @param [String] id - the id of the job
+      # @param [Class, String] klass - The class of the job to run
+      # @param [Array] args - The args to send to the job
+      # @return [Resque::DeferredJob] - the job, cleared
+      def create(id, klass, *args)
+        plan = [klass.to_s, args]
+        redis.set(id, MultiJson.encode(plan))
+        # Return the job
+        job = new id, klass, *args
+        job.clear
+        job
+      end
+
+      # Find an existing DeferredJob
+      # @param [String] id - the id of the job
+      # @return [Resque::DeferredJob] - the job
+      def find(id)
+        plan_data = redis.get(id)
+        # If found, return the job, otherwise raise NoSuchKey
+        if plan_data.nil?
+          raise ::Resque::NoSuchKey.new "No Such DeferredJob: #{id}"
+        else
+          plan = MultiJson.decode(plan_data)
+          new id, plan.first, *plan.last
+        end
+      end
+
+      def exists?(id)
+        !redis.get(id).nil?
+      end
+
+      def version
+        VERSION.join '.'
+      end
+
+      # Our own redis instance in case people want to separate from resque
+      def redis
+        @redis || Resque.redis
+      end
+
     end
 
   end
