@@ -27,7 +27,7 @@ module Resque
     # @param [Array] args - The arguments for the job
     def initialize(id, klass, *args)
       @id = id
-      @set_key = "#{id}-set"
+      @set_key = self.class.key_for id
       @klass = klass.is_a?(String) ? klass.constantize : klass
       @args = args
     end
@@ -129,7 +129,13 @@ module Resque
 
     class << self
 
-      attr_writer :redis
+      attr_writer :redis, :key_lambda
+
+      # The way we turn ids into keys
+      def key_for(id)
+        lamb = @key_lambda || lambda { |id| "#{id}-set" }
+        lamb.call id
+      end
 
       # Create a new DeferredJob
       # @param [String] id - the id of the job
