@@ -14,8 +14,6 @@ module Resque
 
   class DeferredJob
 
-    VERSION = [0, 0, 1]
-
     include Helpers
 
     attr_accessor :verbose
@@ -167,10 +165,6 @@ module Resque
 
       def exists?(id)
         !redis.get(id).nil?
-      end
-
-      def version
-        VERSION.join '.'
       end
 
       # Our own redis instance in case people want to separate from resque
