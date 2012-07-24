@@ -133,7 +133,7 @@ module Resque
 
       # The way we turn ids into keys
       def key_for(id)
-        lamb = @key_lambda || lambda { |id| "#{id}-set" }
+        lamb = @key_lambda || lambda { |id| "deferred-job:#{id}" }
         lamb.call id
       end
 
