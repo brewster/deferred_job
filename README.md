@@ -1,7 +1,5 @@
 # DeferredJob
 
-README
-
 DeferredJob is a small library meant to work with Resque that allows you to add
 a set of pre-conditions that must be met before a Resque job kicks off.
 
