@@ -10,6 +10,40 @@ describe Resque::DeferredJob do
       end.should raise_error Resque::NoSuchKey
     end
 
+    it 'should be able to find a job' do
+      job = Resque::DeferredJob.create('something', SomethingWorker)
+      job = Resque::DeferredJob.find('something')
+      job.klass.should == SomethingWorker
+    end
+
+    it 'should be able to find a with args' do
+      job = Resque::DeferredJob.create('something', SomethingWorker, 'a1', 'a2')
+      job = Resque::DeferredJob.find('something')
+      job.args.should == ['a1', 'a2']
+    end
+
+    it 'should be able to find a job with things' do
+      job = Resque::DeferredJob.create('something', SomethingWorker)
+      job.wait_for 'thing'
+      job = Resque::DeferredJob.find('something')
+      job.count.should == 1
+    end
+
+  end
+
+  describe :exists do
+
+    let(:id) { '1' }
+    let!(:job) { Resque::DeferredJob.create(id, SomethingWorker) }
+
+    it 'should return true when the job exists' do
+      Resque::DeferredJob.exists?(id).should be_true
+    end
+
+    it 'should return false when the job does not exist' do
+      Resque::DeferredJob.exists?(id + 'a').should be_false
+    end
+
   end
 
   describe :done do
@@ -60,6 +94,54 @@ describe Resque::DeferredJob do
 
   end
 
+  describe :waiting_for? do
+
+    let(:id) { 1 }
+    let(:job) { Resque::DeferredJob.create(id, SomethingWorker) }
+
+    let(:thing) { 'hello' }
+    before do
+      job.wait_for thing
+    end
+
+    it 'should be true for things its waiting for' do
+      job.waiting_for?(thing).should be_true
+    end
+
+    it 'should be false for things its not waiting for' do
+      job.waiting_for?(thing + 'a').should be_false
+    end
+
+  end
+
+  describe :waiting_for? do
+
+    let(:id) { 1 }
+    let(:job) { Resque::DeferredJob.create(id, SomethingWorker) }
+
+    context 'when waiting for something' do
+
+      let(:thing) { 'hello' }
+      before do
+        job.wait_for thing
+      end
+
+      it 'should be true for things its waiting for' do
+        job.waiting_for.should == [thing]
+      end
+
+    end
+
+    context 'when waiting for nothing' do
+
+      it 'should return an empty array' do
+        job.waiting_for.should == []
+      end
+
+    end
+
+  end
+
   describe :create do
 
     it 'should be able to create a new job' do
@@ -82,25 +164,6 @@ describe Resque::DeferredJob do
       lambda do
         Resque::DeferredJob.new
       end.should raise_error NoMethodError
-    end
-
-    it 'should be able to find a job' do
-      job = Resque::DeferredJob.create('something', SomethingWorker)
-      job = Resque::DeferredJob.find('something')
-      job.klass.should == SomethingWorker
-    end
-
-    it 'should be able to find a with args' do
-      job = Resque::DeferredJob.create('something', SomethingWorker, 'a1', 'a2')
-      job = Resque::DeferredJob.find('something')
-      job.args.should == ['a1', 'a2']
-    end
-
-    it 'should be able to find a job with things' do
-      job = Resque::DeferredJob.create('something', SomethingWorker)
-      job.wait_for 'thing'
-      job = Resque::DeferredJob.find('something')
-      job.count.should == 1
     end
 
   end
