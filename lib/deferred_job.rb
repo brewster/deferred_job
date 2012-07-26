@@ -129,14 +129,16 @@ module Resque
 
       attr_writer :redis, :key_lambda
 
-      # The way we turn ids into keys
+      # The way we turn id into set_key
+      # @param [Object] id - the id of the job
+      # @return [String] - the set_key to use for the given id
       def key_for(id)
         lamb = @key_lambda || lambda { |id| "deferred-job:#{id}" }
         lamb.call id
       end
 
       # Create a new DeferredJob
-      # @param [String] id - the id of the job
+      # @param [Object] id - the id of the job
       # @param [Class, String] klass - The class of the job to run
       # @param [Array] args - The args to send to the job
       # @return [Resque::DeferredJob] - the job, cleared
@@ -150,7 +152,7 @@ module Resque
       end
 
       # Find an existing DeferredJob
-      # @param [String] id - the id of the job
+      # @param [Object] id - the id of the job
       # @return [Resque::DeferredJob] - the job
       def find(id)
         plan_data = redis.get(id)
@@ -163,11 +165,15 @@ module Resque
         end
       end
 
+      # Determine if a give job exists
+      # @param [Object] id - the id of the job to lookup
+      # @return [Boolean] - whether or not the job exists
       def exists?(id)
         !redis.get(id).nil?
       end
 
       # Our own redis instance in case people want to separate from resque
+      # @return [Redis::Client] - a redis client
       def redis
         @redis || Resque.redis
       end
