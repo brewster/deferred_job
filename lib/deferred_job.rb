@@ -17,7 +17,7 @@ module Resque
     include Helpers
 
     attr_accessor :verbose
-    attr_reader :id, :klass, :args
+    attr_reader :id, :klass, :args, :set_key
 
     # Initialize a new DeferredJob
     # @param [String] id - The ID of the job

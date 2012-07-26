@@ -4,7 +4,7 @@ describe Resque::DeferredJob do
 
   describe :find do
 
-    it 'should raise an error when finding a DeferredJob that does not exist' do
+    it 'should raise error when finding a DeferredJob that does not exist' do
       lambda do
         Resque::DeferredJob.find("nosuchkey")
       end.should raise_error Resque::NoSuchKey
@@ -12,7 +12,7 @@ describe Resque::DeferredJob do
 
   end
 
-  describe :done do 
+  describe :done do
 
     it 'should decrement when told something is done' do
       job = Resque::DeferredJob.create('something', SomethingWorker)
@@ -101,6 +101,38 @@ describe Resque::DeferredJob do
       job.wait_for 'thing'
       job = Resque::DeferredJob.find('something')
       job.count.should == 1
+    end
+
+  end
+
+  describe :key_lambda do
+
+    let(:id) { 1 }
+    let(:job) { Resque::DeferredJob.create(id, SomethingWorker) }
+    let(:subject) { job.set_key }
+
+    before do
+      Resque::DeferredJob.key_lambda = lamb
+    end
+
+    context 'with default key lambda' do
+
+      let(:lamb) { nil }
+
+      it 'should be built the default way' do
+        should == "deferred-job:#{id}"
+      end
+
+    end
+
+    context 'with changed key lambda' do
+
+      let(:lamb) { lambda { |i| i } }
+
+      it 'should be built with the custom lambda' do
+        should == id
+      end
+
     end
 
   end
