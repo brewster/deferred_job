@@ -3,6 +3,10 @@
 DeferredJob is a small library meant to work with Resque that allows you to add
 a set of pre-conditions that must be met before a Resque job kicks off.
 
+``` bash
+$ gem install deferred_job
+```
+
 ## Usage
 
 ### Creating a DeferredJob
