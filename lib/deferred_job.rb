@@ -59,7 +59,7 @@ module Resque
     # NOTE >= 2.4 should use sadd with multiple things
     def wait_for(*things)
       things.each do |thing|
-        log("DeferredJob #{@id} will wait for #{thing.inspect}")
+        log "DeferredJob #{@id} will wait for #{thing.inspect}"
         redis.sadd @set_key, thing
       end
     end
