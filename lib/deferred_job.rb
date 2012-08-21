@@ -146,7 +146,7 @@ module Resque
         plan = [klass.to_s, args]
         redis.set(id, MultiJson.encode(plan))
         # Return the job
-        job = new id, klass, *args
+        job = new(id, klass, *args)
         job.clear
         job
       end
@@ -161,7 +161,7 @@ module Resque
           raise ::Resque::NoSuchKey.new "No Such DeferredJob: #{id}"
         else
           plan = MultiJson.decode(plan_data)
-          new id, plan.first, *plan.last
+          new(id, plan.first, *plan.last)
         end
       end
 
