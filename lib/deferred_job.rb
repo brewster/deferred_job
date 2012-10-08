@@ -1,5 +1,4 @@
 require 'bundler/setup'
-require 'resque'
 
 begin
   require 'active_support/core_ext/string/inflections'
@@ -7,14 +6,15 @@ rescue LoadError
   require 'active_support'
 end
 
-module Resque
+require_relative 'adapters/resque_adapter'
+require_relative 'adapters/sidekiq_adapter'
 
-  class NoSuchKey < StandardError
+module DeferredJob
+
+  class NoSuchJob < StandardError
   end
 
-  class DeferredJob
-
-    include Helpers
+  class Job
 
     attr_accessor :verbose
     attr_reader :id, :klass, :args, :set_key
@@ -32,13 +32,15 @@ module Resque
 
     # Clear all entries in the set
     def clear
-      redis.del @set_key
+      with_redis { |redis| redis.del(@set_key) }
     end
 
     # Clear and then remove the key for this job
     def destroy
-      redis.del @set_key
-      redis.del @id
+      with_redis do |redis|
+        redis.del(@set_key)
+        redis.del(@id)
+      end
     end
 
     # Determine if the set is empty
@@ -50,7 +52,7 @@ module Resque
     # Count the number of elements in the set
     # @return [Fixnum] the count of the elements in the set
     def count
-      redis.scard(@set_key).to_i
+      with_redis { |redis| redis.scard(@set_key).to_i }
     end
 
     # Wait for a thing before continuing
@@ -60,16 +62,16 @@ module Resque
     def wait_for(*things)
       things.each do |thing|
         log "DeferredJob #{@id} will wait for #{thing.inspect}"
-        redis.sadd @set_key, thing
+        with_redis { |redis| redis.sadd @set_key, thing }
       end
     end
 
     def waiting_for?(thing)
-      redis.sismember(@set_key, thing)
+      with_redis { |redis| redis.sismember(@set_key, thing) }
     end
 
     def waiting_for
-      redis.smembers(@set_key)
+      with_redis { |redis| redis.smembers(@set_key) }
     end
 
     # Mark a thing as finished
@@ -77,13 +79,16 @@ module Resque
     # @return [Fixnum] the number of things removed
     # NOTE >= 2.4 should use srem with multiple things
     def done(*things)
-      results = redis.multi do
-        redis.scard @set_key
-        things.each do |thing|
-          log "DeferredJob #{id} done with #{thing.inspect}"
-          redis.srem @set_key, thing
+      results = nil
+      with_redis do |redis|
+        results = redis.multi do
+          redis.scard @set_key
+          things.each do |thing|
+            log "DeferredJob #{id} done with #{thing.inspect}"
+            redis.srem @set_key, thing
+          end
+          redis.scard @set_key
         end
-        redis.scard @set_key
       end
       if results.first > 0
         if results.last.zero?
@@ -104,12 +109,16 @@ module Resque
 
     private
 
-    # A helper (similar to Resque::Helpers)
-    def redis
-      self.class.redis
+    # A helper
+    def with_redis(&block)
+      self.class.with_redis(&block)
     end
 
-    # How to log - mirrors a pattern in resque
+    def adapter
+      self.class.adapter
+    end
+
+    # How to log
     def log(msg)
       if verbose
         if defined?(Rails)
@@ -120,14 +129,14 @@ module Resque
       end
     end
 
-    # Execute the job with resque
+    # Execute the job with the adapter
     def execute
-      Resque.enqueue klass, *args
+      adapter.enqueue klass, *args
     end
 
     class << self
 
-      attr_writer :redis, :key_lambda
+      attr_writer :redis, :key_lambda, :adapter
 
       # The way we turn id into set_key
       # @param [Object] id - the id of the job
@@ -141,10 +150,10 @@ module Resque
       # @param [Object] id - the id of the job
       # @param [Class, String] klass - The class of the job to run
       # @param [Array] args - The args to send to the job
-      # @return [Resque::DeferredJob] - the job, cleared
+      # @return [DeferredJob] - the job, cleared
       def create(id, klass, *args)
         plan = [klass.to_s, args]
-        redis.set(id, MultiJson.encode(plan))
+        with_redis { |redis| redis.set(id, MultiJson.encode(plan)) }
         # Return the job
         job = new(id, klass, *args)
         job.clear
@@ -153,12 +162,12 @@ module Resque
 
       # Find an existing DeferredJob
       # @param [Object] id - the id of the job
-      # @return [Resque::DeferredJob] - the job
+      # @return [DeferredJob] - the job
       def find(id)
-        plan_data = redis.get(id)
-        # If found, return the job, otherwise raise NoSuchKey
+        plan_data = with_redis { |redis| redis.get(id) }
+        # If found, return the job, otherwise raise NoSuchJob
         if plan_data.nil?
-          raise ::Resque::NoSuchKey.new "No Such DeferredJob: #{id}"
+          raise NoSuchJob.new "No Such DeferredJob: #{id}"
         else
           plan = MultiJson.decode(plan_data)
           new(id, plan.first, *plan.last)
@@ -169,17 +178,28 @@ module Resque
       # @param [Object] id - the id of the job to lookup
       # @return [Boolean] - whether or not the job exists
       def exists?(id)
-        !redis.get(id).nil?
+        with_redis { |redis| !redis.get(id).nil? }
       end
 
-      # Our own redis instance in case people want to separate from resque
+      # Our own redis instance in case people want to separate from the message processor
       # @return [Redis::Client] - a redis client
-      def redis
-        @redis || Resque.redis
+      def with_redis(&block)
+        if @redis
+          block.call(@redis)
+        else
+          adapter.with_redis(&block)
+        end
       end
 
+      def adapter
+        @adapter_instance ||= begin
+          if @adapter.nil? || @adapter == :resque
+            ResqueAdapter.new
+          elsif @adapter == :sidekiq
+            SidekiqAdapter.new
+          end
+        end
+      end
     end
-
   end
-
 end

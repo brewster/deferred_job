@@ -1,7 +1,7 @@
 # DeferredJob
 
-DeferredJob is a small library meant to work with Resque that allows you to add
-a set of pre-conditions that must be met before a Resque job kicks off.
+DeferredJob is a small library meant to work with Resque or Sidekiq that allows
+you to add a set of pre-conditions that must be met before a job kicks off.
 
 ``` bash
 $ gem install deferred_job
@@ -9,13 +9,21 @@ $ gem install deferred_job
 
 ## Usage
 
+### Configuration
+
+You'll need to tell DeferredJob which message processing system you're using:
+
+``` ruby
+DeferredJob::Job.adapter = :sidekiq
+```
+
 ### Creating a DeferredJob
 
 To create a deferred job, you must give it an id, and the name/arguments
 of a worker to kick off when the preconditions are met:
 
 ``` ruby
-job = Resque::DeferredJob.create id, SomeWorker, 'worker', 'args'
+job = DeferredJob::Job.create(id, SomeWorker, 'worker', 'args')
 ```
 
 _NOTE:_ If you try to re-create an existing job, you'll clear it out.
@@ -26,9 +34,9 @@ To add preconditions, you can use `#wait_for`.  So if you wanted to wait until
 a few things are done, you can add them one at a time, or in bulk:
 
 ``` ruby
-job.wait_for 'import-1-data'
-job.wait_for 'import-2-data'
-job.wait_for 'import-1-photos', 'import-2-photos'
+job.wait_for('import-1-data')
+job.wait_for('import-2-data')
+job.wait_for('import-1-photos', 'import-2-photos')
 ```
 
 ### Checking preconditions
@@ -59,9 +67,9 @@ to finish things in the same order you put them in (and hopefully you
 aren't):
 
 ``` ruby
-job.done 'import-1-data'
-job.done 'import-1-photos', 'import-2-photos'
-job.done 'import-2-data' # job kick off!
+job.done('import-1-data')
+job.done('import-1-photos', 'import-2-photos')
+job.done('import-2-data') # job kick off!
 ```
 
 ### Loading an existing job
@@ -72,24 +80,24 @@ In that case, load a previous job like so:
 
 ``` ruby
 # Check existence if you'd like
-Resque::DeferredJob.exists? id # true
+DeferredJob::Job.exists? id # true
 
 # Load the job up
-job = Resque::DeferredJob.find id
+job = DeferredJob::Job.find id
 ```
 
 _NOTE:_ If you try to find a job that does not exist, you'll raise an
-exception (`Resque::NoSuchKey`).
+exception (`DeferredJob::NoSuchJob`).
 
 ## Advanced
 
 ### Redis Client
 
-By default, `DeferredJob` will use the same redis instance as Resque.
+By default, `DeferredJob` will use the same redis instance as your message processing tool.
 If you'd like to change that, you can set the redis instace like so:
 
 ``` ruby
-Resque::DeferredJob.redis = your_instace
+DeferredJob::Job.redis = your_instance
 ```
 
 ### Key Generation
@@ -99,7 +107,7 @@ like `deferred-job:#{id}`.  It can be useful to change that, so you can
 specify a new lambda expression for generating the keys:
 
 ``` ruby
-Resque::DeferredJob.key_lambda = lambda { |id| "job:#{id}" }
+DeferredJob.key_lambda = lambda { |id| "job:#{id}" }
 ```
 
 ## License
