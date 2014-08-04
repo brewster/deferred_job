@@ -3,5 +3,6 @@ Gemfile.lock
 *.gem
 *.swp
 *.swo
+.idea/
 
 coverage

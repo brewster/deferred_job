@@ -3,10 +3,10 @@ begin
 
   module DeferredJob
 
-    class SidekiqAdapter
+    class GenericAdapter
 
       def enqueue(klass, *args)
-        klass.perform_async(*args)
+        klass.enqueue(*args)
       end
     end
   end

@@ -1,6 +1,6 @@
 # DeferredJob
 
-DeferredJob is a small library meant to work with Resque or Sidekiq that allows
+DeferredJob is a small library meant to work with Sidekiq or generic classes that allows
 you to add a set of pre-conditions that must be met before a job kicks off.
 
 ``` bash
@@ -11,10 +11,10 @@ $ gem install deferred_job
 
 ### Configuration
 
-You'll need to tell DeferredJob which message processing system you're using:
+You'll need to tell DeferredJob which redis namespace you want to use:
 
 ``` ruby
-DeferredJob::Job.adapter = :sidekiq
+DeferredJob::Job.redis = your_redis_instance
 ```
 
 ### Creating a DeferredJob
@@ -91,14 +91,15 @@ exception (`DeferredJob::NoSuchJob`).
 
 ## Advanced
 
-### Redis Client
-
-By default, `DeferredJob` will use the same redis instance as your message processing tool.
-If you'd like to change that, you can set the redis instace like so:
+### Generic adapters
+If you don't want DeferredJob to automatically kick off a Sidekiq job you
+can instead pass in generic class with the following method:
 
 ``` ruby
-DeferredJob::Job.redis = your_instance
-```
+def self.enqueue(*args)
+````
+
+When the deferred job is ready that method will be called instead od perform_async
 
 ### Key Generation
 
