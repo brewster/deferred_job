@@ -6,8 +6,8 @@ rescue LoadError
   require 'active_support'
 end
 
-require_relative 'adapters/resque_adapter'
 require_relative 'adapters/sidekiq_adapter'
+require_relative 'adapters/generic_adapter'
 
 module DeferredJob
 
@@ -115,7 +115,15 @@ module DeferredJob
     end
 
     def adapter
-      self.class.adapter
+      @adapter ||= get_adapter
+    end
+
+    def get_adapter
+      if klass.include?(Sidekiq::Worker)
+        DeferredJob::SidekiqAdapter.new
+      else
+        DeferredJob::GenericAdapter.new
+      end
     end
 
     # How to log
@@ -136,7 +144,7 @@ module DeferredJob
 
     class << self
 
-      attr_writer :redis, :key_lambda, :adapter
+      attr_writer :redis, :key_lambda
 
       # The way we turn id into set_key
       # @param [Object] id - the id of the job
@@ -181,24 +189,8 @@ module DeferredJob
         with_redis { |redis| !redis.get(id).nil? }
       end
 
-      # Our own redis instance in case people want to separate from the message processor
-      # @return [Redis::Client] - a redis client
       def with_redis(&block)
-        if @redis
-          block.call(@redis)
-        else
-          adapter.with_redis(&block)
-        end
-      end
-
-      def adapter
-        @adapter_instance ||= begin
-          if @adapter.nil? || @adapter == :resque
-            ResqueAdapter.new
-          elsif @adapter == :sidekiq
-            SidekiqAdapter.new
-          end
-        end
+        block.call(@redis)
       end
     end
   end

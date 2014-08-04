@@ -8,6 +8,7 @@ spec = Gem::Specification.new do |s|
   s.add_development_dependency 'activesupport'
   s.add_development_dependency 'simplecov'
   s.add_development_dependency 'sidekiq'
+  s.add_development_dependency 'redis'
   s.add_dependency 'multi_json'
   s.files = Dir['lib/**/*.rb'] + ['README.md']
   s.homepage = 'http://github.com/brewster/deferred_job'
