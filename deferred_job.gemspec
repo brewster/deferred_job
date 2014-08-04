@@ -3,7 +3,6 @@ spec = Gem::Specification.new do |s|
   s.authors = ['John Crepezzi', 'Aubrey Holland']
   s.description = 'Deferred Jobs'
   s.email = 'aubrey@brewster.com'
-  s.add_development_dependency 'resque'
   s.add_development_dependency 'rspec'
   s.add_development_dependency 'activesupport'
   s.add_development_dependency 'simplecov'
@@ -14,7 +13,7 @@ spec = Gem::Specification.new do |s|
   s.homepage = 'http://github.com/brewster/deferred_job'
   s.platform = Gem::Platform::RUBY
   s.require_paths = ['lib']
-  s.summary = 'Deferred job library for Resque or Sidekiq'
+  s.summary = 'Deferred job library for Sidekiq or generic classes'
   s.test_files = Dir.glob('spec/*.rb')
   s.version = '0.1.1' # TODO
 end
