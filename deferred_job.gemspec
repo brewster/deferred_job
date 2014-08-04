@@ -15,5 +15,5 @@ spec = Gem::Specification.new do |s|
   s.require_paths = ['lib']
   s.summary = 'Deferred job library for Sidekiq or generic classes'
   s.test_files = Dir.glob('spec/*.rb')
-  s.version = '0.1.1' # TODO
+  s.version = '1.0.0'
 end
