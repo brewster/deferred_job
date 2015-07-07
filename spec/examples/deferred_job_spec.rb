@@ -62,6 +62,18 @@ describe DeferredJob::Job do
       job.done 'thing'
     end
 
+    it 'should return false if job not executed' do
+      job = DeferredJob::Job.create('something', SomethingWorker)
+      job.wait_for 'thing'
+      job.wait_for 'thing2'
+      job.done('thing').should be_false
+    end
+    it 'should return true after executing' do
+      job = DeferredJob::Job.create('something', SomethingWorker)
+      job.wait_for 'thing'
+      job.done('thing').should be_true
+    end
+
   end
 
   describe :wait_for do
