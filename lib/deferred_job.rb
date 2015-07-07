@@ -76,17 +76,15 @@ module DeferredJob
 
     # Mark a thing as finished
     # @param [Array] things - The things to remove
-    # @return [Fixnum] the number of things removed
-    # NOTE >= 2.4 should use srem with multiple things
+    # @return [Boolean] whether or not the deferred job was executed
     def done(*things)
       results = nil
+      executed = false
       with_redis do |redis|
         results = redis.multi do
           redis.scard @set_key
-          things.each do |thing|
-            log "DeferredJob #{id} done with #{thing.inspect}"
-            redis.srem @set_key, thing
-          end
+          log "DeferredJob #{id} done with #{things.inspect}"
+          redis.srem @set_key, things
           redis.scard @set_key
         end
       end
@@ -95,6 +93,7 @@ module DeferredJob
           log "DeferredJob #{id} all conditions met; will now self-destruct"
           begin
             execute
+            executed = true
           ensure
             destroy
           end
@@ -102,6 +101,7 @@ module DeferredJob
           log "DeferredJob #{id} waiting on #{results.last} conditions"
         end
       end
+      executed
     end
 
    # Don't allow new instances
